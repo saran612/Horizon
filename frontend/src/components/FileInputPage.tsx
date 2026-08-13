@@ -54,32 +54,53 @@ export default function FileInputPage() {
     
     setFiles([fileObj]);
 
-    // Simulate uploading
-    simulateUpload(fileObj.id);
+    // Upload file to backend
+    uploadFile(fileObj);
   };
 
-  const simulateUpload = (id: string) => {
+  const uploadFile = (fileObj: FileWithProgress) => {
+    const formData = new FormData();
+    formData.append('file', fileObj.file);
+
+    const xhr = new XMLHttpRequest();
+    
     setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: 'uploading' } : f))
+      prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'uploading', progress: 0 } : f))
     );
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 15) + 5;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        setFiles((prev) =>
+          prev.map((f) => (f.id === fileObj.id ? { ...f, progress: percentComplete } : f))
+        );
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
         setFiles((prev) =>
           prev.map((f) =>
-            f.id === id ? { ...f, progress, status: 'completed' } : f
+            f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f
           )
         );
       } else {
+        setError(`Upload failed: ${xhr.statusText || 'Server error'}`);
         setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress } : f))
+          prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' } : f))
         );
       }
-    }, 200);
+    });
+
+    xhr.addEventListener('error', () => {
+      setError("Network error occurred during upload.");
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' } : f))
+      );
+    });
+
+    xhr.open('POST', 'http://localhost:8005/api/v1/upload');
+    xhr.send(formData);
   };
 
   const handleDrag = (e: React.DragEvent) => {
