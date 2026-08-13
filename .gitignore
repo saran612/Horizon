@@ -1,0 +1,34 @@
+# Project Brain (AI Agent Files)
+project_brain.md
+
+# OS / IDE files
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Node / Frontend build files
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python / Backend virtual environments & cache
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
