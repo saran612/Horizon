@@ -41,3 +41,5 @@ The application will be running at `http://localhost:8000`.
 - **Root API**: `http://localhost:8000/`
 - **Swagger Documentation**: `http://localhost:8000/docs`
 - **Health Check**: `http://localhost:8000/api/v1/health`
+
+
