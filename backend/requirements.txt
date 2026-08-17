@@ -3,3 +3,8 @@ uvicorn[standard]>=0.28.0
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
 python-multipart>=0.0.9
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+pypdf>=4.0.0
+minio>=7.2.0
+

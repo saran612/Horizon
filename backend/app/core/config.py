@@ -19,6 +19,13 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
+    # MinIO Settings
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "admin"
+    MINIO_SECRET_KEY: str = "password"
+    MINIO_BUCKET_NAME: str = "horizon-uploads"
+    MINIO_SECURE: bool = False
+
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=".env",
