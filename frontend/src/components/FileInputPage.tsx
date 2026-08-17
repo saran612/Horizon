@@ -1,17 +1,29 @@
 import React, { useState, useRef } from 'react';
 
 interface FileWithProgress {
-  file: File;
+  id: string;
+  name: string;
+  size: number;
   progress: number;
   status: 'pending' | 'uploading' | 'completed' | 'failed';
-  id: string;
+  file?: File;
+  extractedUuids?: string[];
+  generatedMdFiles?: string[];
 }
 
 export default function FileInputPage() {
-  const [files, setFiles] = useState<FileWithProgress[]>([]);
+  const [files, setFiles] = useState<FileWithProgress[]>(() => {
+    const saved = localStorage.getItem('horizon_uploaded_files');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const saveToLocalStorage = (list: FileWithProgress[]) => {
+    const sanitized = list.map(({ file, ...rest }) => rest);
+    localStorage.setItem('horizon_uploaded_files', JSON.stringify(sanitized));
+  };
 
   const processFiles = (newFiles: FileList) => {
     setError(null);
@@ -45,61 +57,93 @@ export default function FileInputPage() {
       return;
     }
 
-    const fileObj = {
-      file,
-      progress: 0,
-      status: 'pending' as const,
+    const fileObj: FileWithProgress = {
       id: `${file.name}-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      status: 'pending',
+      file,
     };
     
-    setFiles([fileObj]);
+    const updatedList = [fileObj];
+    setFiles(updatedList);
+    saveToLocalStorage(updatedList);
 
     // Upload file to backend
     uploadFile(fileObj);
   };
 
   const uploadFile = (fileObj: FileWithProgress) => {
+    if (!fileObj.file) return;
     const formData = new FormData();
     formData.append('file', fileObj.file);
 
     const xhr = new XMLHttpRequest();
     
-    setFiles((prev) =>
-      prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'uploading', progress: 0 } : f))
-    );
+    setFiles((prev) => {
+      const next = prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'uploading' as const, progress: 0 } : f));
+      saveToLocalStorage(next);
+      return next;
+    });
 
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable) {
         const percentComplete = Math.round((event.loaded / event.total) * 100);
-        setFiles((prev) =>
-          prev.map((f) => (f.id === fileObj.id ? { ...f, progress: percentComplete } : f))
-        );
+        setFiles((prev) => {
+          const next = prev.map((f) => (f.id === fileObj.id ? { ...f, progress: percentComplete } : f));
+          saveToLocalStorage(next);
+          return next;
+        });
       }
     });
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f
-          )
-        );
+        try {
+          const response = JSON.parse(xhr.responseText);
+          setFiles((prev) => {
+            const next = prev.map((f) =>
+              f.id === fileObj.id
+                ? {
+                    ...f,
+                    progress: 100,
+                    status: 'completed' as const,
+                    extractedUuids: response.extracted_uuids,
+                    generatedMdFiles: response.generated_md_files,
+                  }
+                : f
+            );
+            saveToLocalStorage(next);
+            return next;
+          });
+        } catch (e) {
+          setFiles((prev) => {
+            const next = prev.map((f) => (f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' as const } : f));
+            saveToLocalStorage(next);
+            return next;
+          });
+        }
       } else {
         setError(`Upload failed: ${xhr.statusText || 'Server error'}`);
-        setFiles((prev) =>
-          prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' } : f))
-        );
+        setFiles((prev) => {
+          const next = prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' as const } : f));
+          saveToLocalStorage(next);
+          return next;
+        });
       }
     });
 
     xhr.addEventListener('error', () => {
       setError("Network error occurred during upload.");
-      setFiles((prev) =>
-        prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' } : f))
-      );
+      setFiles((prev) => {
+        const next = prev.map((f) => (f.id === fileObj.id ? { ...f, status: 'failed' as const } : f));
+        saveToLocalStorage(next);
+        return next;
+      });
     });
 
-    xhr.open('POST', 'http://localhost:8005/api/v1/upload');
+    xhr.open('POST', 'http://localhost:8000/api/v1/upload');
     xhr.send(formData);
   };
 
@@ -133,7 +177,11 @@ export default function FileInputPage() {
   };
 
   const removeFile = (id: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+    setFiles((prev) => {
+      const next = prev.filter((f) => f.id !== id);
+      saveToLocalStorage(next);
+      return next;
+    });
   };
 
   const formatBytes = (bytes: number, decimals = 2) => {
@@ -246,7 +294,7 @@ export default function FileInputPage() {
                 
                 <div style={styles.fileDetails}>
                   <div style={styles.fileNameRow}>
-                    <span style={styles.fileName}>{fileObj.file.name}</span>
+                    <span style={styles.fileName}>{fileObj.name}</span>
                     <button
                       onClick={() => removeFile(fileObj.id)}
                       style={styles.removeBtn}
@@ -256,7 +304,7 @@ export default function FileInputPage() {
                     </button>
                   </div>
                   <div style={styles.fileMeta}>
-                    <span>{formatBytes(fileObj.file.size)}</span>
+                    <span>{formatBytes(fileObj.size)}</span>
                     <span style={styles.dot}>•</span>
                     <span style={{
                       ...styles.statusText,
@@ -266,6 +314,19 @@ export default function FileInputPage() {
                       {fileObj.status.charAt(0).toUpperCase() + fileObj.status.slice(1)}
                     </span>
                   </div>
+
+                  {fileObj.extractedUuids && fileObj.extractedUuids.length > 0 && (
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-h)' }}>Extracted UUIDs:</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {fileObj.extractedUuids.map(uuid => (
+                          <span key={uuid} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--social-bg)', border: '1px solid var(--border)', color: 'var(--text-h)' }}>
+                            {uuid}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {fileObj.status === 'uploading' && (
                     <div style={styles.progressContainer}>
