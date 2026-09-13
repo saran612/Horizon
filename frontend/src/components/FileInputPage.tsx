@@ -1,5 +1,81 @@
 import React, { useState, useRef } from 'react';
 
+interface LocationInfo {
+  city?: string;
+  state?: string;
+  country?: string;
+}
+
+interface PersonalInfo {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  location?: LocationInfo;
+  linkedin_url?: string;
+  github_url?: string;
+  portfolio_url?: string;
+}
+
+interface Skills {
+  technical?: string[];
+  soft?: string[];
+  tools?: string[];
+  languages_programming?: string[];
+  languages_spoken?: string[];
+}
+
+interface EducationItem {
+  institution?: string;
+  degree?: string;
+  field_of_study?: string;
+  start_date?: string;
+  end_date?: string;
+  gpa?: string;
+  location?: string;
+}
+
+interface ExperienceItem {
+  company?: string;
+  title?: string;
+  location?: string;
+  start_date?: string;
+  end_date?: string;
+  is_current?: boolean;
+  responsibilities?: string[];
+  achievements?: string[];
+}
+
+interface CertificationItem {
+  name?: string;
+  issuing_org?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  credential_id?: string;
+}
+
+interface ProjectItem {
+  name?: string;
+  description?: string;
+  tech_stack?: string[];
+  url?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface ResumeData {
+  personal_info?: PersonalInfo;
+  summary?: string;
+  education?: EducationItem[];
+  work_experience?: ExperienceItem[];
+  skills?: Skills;
+  certifications?: CertificationItem[];
+  projects?: ProjectItem[];
+  publications?: string[];
+  awards?: string[];
+  total_experience_years?: number | null;
+  raw_text?: string;
+}
+
 interface FileWithProgress {
   id: string;
   name: string;
@@ -9,6 +85,7 @@ interface FileWithProgress {
   file?: File;
   extractedUuids?: string[];
   generatedMdFiles?: string[];
+  resumeData?: ResumeData;
 }
 
 export default function FileInputPage() {
@@ -110,7 +187,8 @@ export default function FileInputPage() {
                     progress: 100,
                     status: 'completed' as const,
                     extractedUuids: response.extracted_uuids,
-                    generatedMdFiles: response.generated_md_files,
+                    generatedMdFiles: response.generated_files || response.generated_md_files,
+                    resumeData: response.resume_data,
                   }
                 : f
             );
@@ -314,6 +392,98 @@ export default function FileInputPage() {
                       {fileObj.status.charAt(0).toUpperCase() + fileObj.status.slice(1)}
                     </span>
                   </div>
+
+                  {fileObj.resumeData && (
+                    <div style={{ marginTop: '14px', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--social-bg)', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-h)' }}>
+                          📄 Extracted Resume Profile
+                        </span>
+                        {fileObj.resumeData.personal_info?.full_name && (
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--accent)' }}>
+                            {fileObj.resumeData.personal_info.full_name}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Contact & Links */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: 'var(--text)', marginBottom: '8px' }}>
+                        {fileObj.resumeData.personal_info?.email && (
+                          <span>📧 {fileObj.resumeData.personal_info.email}</span>
+                        )}
+                        {fileObj.resumeData.personal_info?.phone && (
+                          <span>📞 {fileObj.resumeData.personal_info.phone}</span>
+                        )}
+                        {fileObj.resumeData.personal_info?.github_url && (
+                          <a href={fileObj.resumeData.personal_info.github_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                            🐙 GitHub
+                          </a>
+                        )}
+                        {fileObj.resumeData.personal_info?.linkedin_url && (
+                          <a href={fileObj.resumeData.personal_info.linkedin_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                            💼 LinkedIn
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Programming Languages & Tech Skills */}
+                      {fileObj.resumeData.skills && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                          {fileObj.resumeData.skills.languages_programming && fileObj.resumeData.skills.languages_programming.length > 0 && (
+                            <div>
+                              <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-h)', display: 'block', marginBottom: '4px' }}>
+                                Programming Languages:
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {fileObj.resumeData.skills.languages_programming.map((lang) => (
+                                  <span key={lang} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--accent)' }}>
+                                    {lang}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {fileObj.resumeData.skills.technical && fileObj.resumeData.skills.technical.length > 0 && (
+                            <div>
+                              <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-h)', display: 'block', marginBottom: '4px' }}>
+                                Technical Skills & Frameworks:
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {fileObj.resumeData.skills.technical.map((skill) => (
+                                  <span key={skill} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-h)' }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {fileObj.resumeData.skills.tools && fileObj.resumeData.skills.tools.length > 0 && (
+                            <div>
+                              <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-h)', display: 'block', marginBottom: '4px' }}>
+                                Tools & Cloud:
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {fileObj.resumeData.skills.tools.map((tool) => (
+                                  <span key={tool} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-h)' }}>
+                                    {tool}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Education / Experience snippet */}
+                      {fileObj.resumeData.education && fileObj.resumeData.education.length > 0 && (
+                        <div style={{ fontSize: '11px', color: 'var(--text)' }}>
+                          <strong>Education:</strong> {fileObj.resumeData.education[0]?.degree || fileObj.resumeData.education[0]?.institution} {fileObj.resumeData.education[0]?.gpa ? `(GPA: ${fileObj.resumeData.education[0].gpa})` : ''}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {fileObj.extractedUuids && fileObj.extractedUuids.length > 0 && (
                     <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
